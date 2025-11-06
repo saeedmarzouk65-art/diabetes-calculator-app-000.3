@@ -1,34 +1,22 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- CHANGE 1: Import from Realtime Database instead of Firestore ---
+// --- Imports ---
 import { initializeApp } from "firebase/app";
 import {
-  getDatabase, // Replaced getFirestore
-  ref,         // Replaced collection
-  push         // Replaced addDoc
-} from "firebase/database"; // Changed from "firebase/firestore"
-// --- END OF CHANGE ---
-
+  getDatabase,
+  ref,
+  push
+} from "firebase/database";
 import {
   getAuth,
   signInAnonymously,
-  signInWithCustomToken,
   onAuthStateChanged
 } from "firebase/auth";
 
-// --- START: Lucide Icons (UNCHANGED) ---
-const Activity = ({ className = "w-6 h-6" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-);
+// --- Icons and UI Components ---
 const ArrowRight = ({ className = "w-6 h-6" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
-);
-const RotateCcw = ({ className = "w-6 h-6" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 2v6h6" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 12" /></svg>
-);
-const Check = ({ className = "w-6 h-6" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12" /></svg>
 );
 const ArrowLeft = ({ className = "w-6 h-6" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
@@ -39,9 +27,6 @@ const HeartPulse = ({ className = "w-6 h-6" }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25H21L16.5 16.5l-3.75-3.75Z" />
   </svg>
 );
-// --- END: Lucide Icons (UNCHANGED) ---
-
-// --- START: shadcn/ui components (UNCHANGED) ---
 function cn(...inputs) {
   return inputs.filter(Boolean).join(' ');
 }
@@ -49,13 +34,6 @@ const Button = React.forwardRef(({ className, variant, size, ...props }, ref) =>
   const baseStyles = "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
   return <button className={cn(baseStyles, className)} ref={ref} {...props} />;
 });
-const Card = React.forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
-));
-// --- END: shadcn/ui components (UNCHANGED) ---
-
-
-// --- START: GAUGE COMPONENT (UNCHANGED) ---
 function ResultGauge({ score, quizType }) {
   const [rotation, setRotation] = useState(-90);
   const riskThreshold = quizType === 'cdc' ? 5 : 6;
@@ -81,10 +59,9 @@ function ResultGauge({ score, quizType }) {
     </div>
   );
 }
-// --- END: GAUGE COMPONENT (UNCHANGED) ---
+// --- END Icons and UI Components ---
 
-
-// --- START: DATA CONSTANT (UNCHANGED) ---
+// --- DATA CONSTANT ---
 const content = {
     ar: {
         headerTitle: "حاسبة السكري",
@@ -203,13 +180,13 @@ const content = {
         }
     }
 };
-// --- END: DATA CONSTANT (UNCHANGED) ---
+// --- END DATA CONSTANT ---
 
 
 // --- START: Main App Component ---
 export default function App() {
   
-  // --- State (UNCHANGED) ---
+  // --- State ---
   const [language, setLanguage] = useState("ar");
   const [screen, setScreen] = useState("menu"); 
   const [quizType, setQuizType] = useState(null);
@@ -230,34 +207,33 @@ export default function App() {
   const isRTL = language === "ar";
   const t = content[language];
 
-  // --- CHANGE 2: Firebase Initialization Effect ---
+  // --- `useEffect` for Firebase Config (VERCEL / VITE ONLY) ---
+  // This block is *only* for Vercel. It will not work in this preview.
   useEffect(() => {
     let firebaseConfig;
-    if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-      console.log("Loading config from Vercel/production env variables...");
+    
+    // --- THIS IS THE VITE CONFIGURATION ---
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIREBASE_API_KEY) {
+      console.log("Loading config from Vite/Vercel env variables...");
       firebaseConfig = {
-        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-        // --- Add the databaseURL from your Vercel keys ---
-        databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
       };
     }
-    else if (typeof __firebase_config !== 'undefined' && __firebase_config !== '{}') {
-      console.log("Loading config from built-in environment...");
-      const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-      firebaseConfig = JSON.parse(firebaseConfigStr);
-    }
+    // --- THIS IS THE ERROR ---
     else {
-      console.error("Firebase config is missing!");
+      console.error("Firebase config is missing! Make sure VITE_... variables are set in Vercel.");
       return;
     }
 
-    const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    // This `appId` is for the database path, it's different from the firebase `appId`
+    const currentAppId = 'default-app-id'; // You can hardcode this
+    const token = null; // We will only use anonymous sign in
     setAppId(currentAppId);
 
     try {
@@ -266,14 +242,10 @@ export default function App() {
         return;
       }
       const app = initializeApp(firebaseConfig);
-      
-      // --- Use getDatabase (for Realtime DB) instead of getFirestore ---
       const rtdb = getDatabase(app); 
       const firebaseAuth = getAuth(app);
       
-      // --- Removed setLogLevel('Debug') as it was for Firestore ---
-      
-      setDb(rtdb); // --- Save the Realtime DB instance ---
+      setDb(rtdb);
       setAuth(firebaseAuth);
 
       onAuthStateChanged(firebaseAuth, async (user) => {
@@ -283,13 +255,9 @@ export default function App() {
         } else {
           console.log("No user found, attempting sign in...");
           try {
-            if (token) {
-              await signInWithCustomToken(firebaseAuth, token);
-              console.log("Signed in with custom token.");
-            } else {
-              await signInAnonymously(firebaseAuth);
-              console.log("Signed in anonymously.");
-            }
+            // We only need anonymous sign-in for Vercel
+            await signInAnonymously(firebaseAuth);
+            console.log("Signed in anonymously.");
           } catch (authError) {
             console.error("Error during sign-in:", authError);
           }
@@ -299,16 +267,16 @@ export default function App() {
       console.error("Error parsing Firebase config:", e);
     }
   }, []);
-  // --- END OF CHANGE ---
+  // --- *** END OF `useEffect` BLOCK *** ---
   
-  // --- Effect to update document language (UNCHANGED) ---
+  // --- Effect to update document language ---
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = isRTL ? "rtl" : "ltr";
     document.title = t.headerTitle;
   }, [language, t]);
 
-  // --- Helper Functions (UNCHANGED) ---
+  // --- All other functions (saveResult, goToNextQuestion, etc) ---
   const getFilteredQuestions = () => {
     if (!quizType) return [];
     const questions = t[quizType].questions;
@@ -359,55 +327,37 @@ export default function App() {
     setMeasurementError(null);
     setActiveOption(null);
   };
-
-  // --- CHANGE 3: `saveResult` function updated for Realtime Database ---
   const saveResult = async (finalScore) => {
     setSaving(true);
-    
     if (!db || !userId) {
-      // --- Updated error message for clarity ---
       console.error("Realtime DB or User ID not initialized. Cannot save.");
       setSaving(false);
       return;
     }
-    
     const riskThreshold = quizType === 'cdc' ? 5 : 6;
     const riskLevel = finalScore >= riskThreshold ? "High" : "Low";
     const riskLevelText = finalScore >= riskThreshold 
       ? (language === 'ar' ? 'خطر مرتفع' : 'High Risk')
       : (language === 'ar' ? 'خطر منخفض' : 'Low Risk');
-
     const testResultData = {
       quiz_type: quizType,
       score: finalScore,
       risk_level: riskLevelText,
       language: language,
-      timestamp: new Date().toISOString(), // RTDB prefers ISO strings
+      timestamp: new Date().toISOString(),
       user_id: userId,
       app_id: appId
     };
-
     try {
-      // --- This is the new Realtime Database save logic ---
-      // 1. Define the path (same as before, but as a string path)
       const dbPath = `/artifacts/${appId}/users/${userId}/TestResults`;
-      
-      // 2. Get a reference to that path in the database
       const dbRef = ref(db, dbPath);
-      
-      // 3. 'push' creates a new entry with a unique ID, just like 'addDoc'
       const newResultRef = await push(dbRef, testResultData);
-      
       console.log("Result saved to Realtime Database with key: ", newResultRef.key);
     } catch (error) {
       console.error("Error saving result to Realtime Database:", error);
     }
-    
     setSaving(false);
   };
-  // --- END OF CHANGE ---
-
-  // --- Quiz logic functions (UNCHANGED) ---
   const goToNextQuestion = (newScore, newGender) => {
     setHistory(h => [...h, {
       questionIndex: currentQuestionIndex,
@@ -470,15 +420,13 @@ export default function App() {
     setLanguage(l => l === 'ar' ? 'en' : 'ar');
     resetApp();
   };
-  
-  // --- Helper variables (UNCHANGED) ---
   const questions = getFilteredQuestions();
   const currentQuestion = questions[currentQuestionIndex];
   const progress = (questions.length > 0) ? (currentQuestionIndex / questions.length) * 100 : 0;
   const riskThreshold = quizType === 'cdc' ? 5 : 6;
   const isHighRisk = score >= riskThreshold;
 
-  // --- JSX / HTML Rendering (UNCHANGED) ---
+  // --- JSX / HTML Rendering ---
   return (
     <div className="flex items-center justify-center min-h-screen p-4" style={{ background: 'linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%)', fontFamily: "'Tajawal', sans-serif" }}>
       <div id="app-container" className="w-full max-w-md mx-auto bg-white shadow-xl shadow-cyan-100/50 rounded-3xl p-6 md:p-8 space-y-6 transition-all duration-500 border border-gray-100" dir={isRTL ? "rtl" : "ltr"}>
@@ -588,6 +536,7 @@ export default function App() {
               
               <div className="space-y-5">
                 <p className="text-xl font-bold text-gray-800 text-center leading-relaxed">
+                  {/* THIS IS THE FIX. It was `t.currentQuestion.text` */}
                   {currentQuestion.text}
                 </p>
                 
