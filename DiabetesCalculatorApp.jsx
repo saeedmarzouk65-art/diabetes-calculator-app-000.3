@@ -1,14 +1,15 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Firebase Imports (PRESERVED)
+// --- CHANGE 1: Import from Realtime Database instead of Firestore ---
 import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  setLogLevel
-} from "firebase/firestore";
+  getDatabase, // Replaced getFirestore
+  ref,         // Replaced collection
+  push         // Replaced addDoc
+} from "firebase/database"; // Changed from "firebase/firestore"
+// --- END OF CHANGE ---
+
 import {
   getAuth,
   signInAnonymously,
@@ -16,9 +17,7 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 
-// --- START: Lucide Icons (PRESERVED) ---
-// We keep the icons from the original file and add new ones needed for the new design.
-
+// --- START: Lucide Icons (UNCHANGED) ---
 const Activity = ({ className = "w-6 h-6" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
 );
@@ -34,56 +33,43 @@ const Check = ({ className = "w-6 h-6" }) => (
 const ArrowLeft = ({ className = "w-6 h-6" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
 );
-
-// NEW Icon from the HTML design
 const HeartPulse = ({ className = "w-6 h-6" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25H21L16.5 16.5l-3.75-3.75Z" />
   </svg>
 );
-// --- END: Lucide Icons ---
+// --- END: Lucide Icons (UNCHANGED) ---
 
-// --- START: Stubbed shadcn/ui components (PRESERVED) ---
+// --- START: shadcn/ui components (UNCHANGED) ---
 function cn(...inputs) {
   return inputs.filter(Boolean).join(' ');
 }
-
 const Button = React.forwardRef(({ className, variant, size, ...props }, ref) => {
   const baseStyles = "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
   return <button className={cn(baseStyles, className)} ref={ref} {...props} />;
 });
-
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
 ));
-// --- END: Stubbed shadcn/ui components ---
+// --- END: shadcn/ui components (UNCHANGED) ---
 
 
-// --- START: NEW GAUGE COMPONENT ---
-// This component replicates the CSS gauge from the new HTML file.
+// --- START: GAUGE COMPONENT (UNCHANGED) ---
 function ResultGauge({ score, quizType }) {
   const [rotation, setRotation] = useState(-90);
-  
   const riskThreshold = quizType === 'cdc' ? 5 : 6;
   const maxScore = quizType === 'cdc' ? 11 : 10;
-  
   useEffect(() => {
-    // Calculate angle: (score / maxScore) * 180 degrees, then offset by -90
     const angle = (Math.min(score, maxScore) / maxScore) * 180 - 90;
-    // Set timeout to allow the component to render first
     const timer = setTimeout(() => setRotation(angle), 300);
     return () => clearTimeout(timer);
   }, [score, maxScore]);
-
   return (
     <div className="flex justify-center mb-4">
       <div className="w-[200px] h-[100px] relative overflow-hidden">
-        {/* Background gradient div */}
         <div className="w-full h-full rounded-t-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 opacity-80" />
-        {/* Cover div to create the arc */}
         <div className="w-[160px] h-[80px] bg-white rounded-t-full absolute bottom-0 left-1/2 -translate-x-1/2" />
-        {/* Pointer */}
         <motion.div
           className="w-[3px] h-[90px] bg-gray-700 absolute bottom-[10px] left-1/2"
           style={{ originY: "100%", originX: "50%" }}
@@ -95,11 +81,10 @@ function ResultGauge({ score, quizType }) {
     </div>
   );
 }
-// --- END: NEW GAUGE COMPONENT ---
+// --- END: GAUGE COMPONENT (UNCHANGED) ---
 
 
-// --- START: NEW DATA CONSTANT (from HTML/JS) ---
-// This object replaces all the old question arrays and content object.
+// --- START: DATA CONSTANT (UNCHANGED) ---
 const content = {
     ar: {
         headerTitle: "حاسبة السكري",
@@ -218,39 +203,34 @@ const content = {
         }
     }
 };
-// --- END: NEW DATA CONSTANT ---
+// --- END: DATA CONSTANT (UNCHANGED) ---
 
 
-// --- START: Main App Component (MODIFIED) ---
+// --- START: Main App Component ---
 export default function App() {
   
-  // --- NEW: State from HTML/JS logic ---
+  // --- State (UNCHANGED) ---
   const [language, setLanguage] = useState("ar");
-  const [screen, setScreen] = useState("menu"); // 'menu', 'quiz', 'result'
-  const [quizType, setQuizType] = useState(null); // 'cdc', 'sadrisc'
+  const [screen, setScreen] = useState("menu"); 
+  const [quizType, setQuizType] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [userGender, setUserGender] = useState(null);
-  const [history, setHistory] = useState([]); // For the back button
-  
-  // State for measurement inputs
+  const [history, setHistory] = useState([]);
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [waist, setWaist] = useState("");
   const [measurementError, setMeasurementError] = useState(null);
   const [activeOption, setActiveOption] = useState(null);
-
-  // --- PRESERVED: Firebase State ---
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
   const [appId, setAppId] = useState('default-app-id');
-  const [saving, setSaving] = useState(false); // Used to show loading state
-
+  const [saving, setSaving] = useState(false);
   const isRTL = language === "ar";
   const t = content[language];
 
-  // --- PRESERVED: Firebase Initialization Effect ---
+  // --- CHANGE 2: Firebase Initialization Effect ---
   useEffect(() => {
     let firebaseConfig;
     if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
@@ -261,7 +241,9 @@ export default function App() {
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
         messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+        // --- Add the databaseURL from your Vercel keys ---
+        databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
       };
     }
     else if (typeof __firebase_config !== 'undefined' && __firebase_config !== '{}') {
@@ -284,10 +266,14 @@ export default function App() {
         return;
       }
       const app = initializeApp(firebaseConfig);
-      const firestoreDb = getFirestore(app);
+      
+      // --- Use getDatabase (for Realtime DB) instead of getFirestore ---
+      const rtdb = getDatabase(app); 
       const firebaseAuth = getAuth(app);
-      setLogLevel('Debug');
-      setDb(firestoreDb);
+      
+      // --- Removed setLogLevel('Debug') as it was for Firestore ---
+      
+      setDb(rtdb); // --- Save the Realtime DB instance ---
       setAuth(firebaseAuth);
 
       onAuthStateChanged(firebaseAuth, async (user) => {
@@ -313,16 +299,16 @@ export default function App() {
       console.error("Error parsing Firebase config:", e);
     }
   }, []);
+  // --- END OF CHANGE ---
   
-  // --- NEW: Effect to update document language and title ---
+  // --- Effect to update document language (UNCHANGED) ---
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = isRTL ? "rtl" : "ltr";
     document.title = t.headerTitle;
   }, [language, t]);
 
-  // --- NEW: Helper Functions based on HTML/JS logic ---
-  
+  // --- Helper Functions (UNCHANGED) ---
   const getFilteredQuestions = () => {
     if (!quizType) return [];
     const questions = t[quizType].questions;
@@ -331,7 +317,6 @@ export default function App() {
     }
     return questions;
   };
-
   const startQuiz = (tool) => {
     setQuizType(tool);
     setScreen("quiz");
@@ -339,14 +324,12 @@ export default function App() {
     setScore(0);
     setUserGender(null);
     setHistory([]);
-    // Clear measurement fields
     setHeight("");
     setWeight("");
     setWaist("");
     setMeasurementError(null);
     setActiveOption(null);
   };
-
   const resetApp = () => {
     setScreen("menu");
     setQuizType(null);
@@ -360,24 +343,16 @@ export default function App() {
     setMeasurementError(null);
     setActiveOption(null);
   };
-  
   const handleBack = () => {
     if (history.length === 0) {
       resetApp();
       return;
     }
-    
-    // Get the previous state
     const prevState = history[history.length - 1];
-    // Remove it from history
     setHistory(h => h.slice(0, -1));
-
-    // Restore state
     setCurrentQuestionIndex(prevState.questionIndex);
     setScore(prevState.score);
     setUserGender(prevState.userGender);
-    
-    // Clear inputs and errors
     setHeight("");
     setWeight("");
     setWaist("");
@@ -385,67 +360,66 @@ export default function App() {
     setActiveOption(null);
   };
 
-  // --- MODIFIED: saveResult Function (PRESERVED) ---
-  // This is kept from the original React app, but simplified to
-  // match the data available from the *new* quiz logic.
+  // --- CHANGE 3: `saveResult` function updated for Realtime Database ---
   const saveResult = async (finalScore) => {
     setSaving(true);
     
     if (!db || !userId) {
-      console.error("Firestore DB or User ID not initialized. Cannot save.");
+      // --- Updated error message for clarity ---
+      console.error("Realtime DB or User ID not initialized. Cannot save.");
       setSaving(false);
       return;
     }
     
-    // Get risk level from *new* logic
     const riskThreshold = quizType === 'cdc' ? 5 : 6;
     const riskLevel = finalScore >= riskThreshold ? "High" : "Low";
     const riskLevelText = finalScore >= riskThreshold 
       ? (language === 'ar' ? 'خطر مرتفع' : 'High Risk')
       : (language === 'ar' ? 'خطر منخفض' : 'Low Risk');
 
-    // Simplified data object based on what the new quiz tracks
     const testResultData = {
       quiz_type: quizType,
       score: finalScore,
       risk_level: riskLevelText,
       language: language,
-      timestamp: new Date(),
-      user_id: userId, // Keep track of the user
-      app_id: appId // Keep track of the app
+      timestamp: new Date().toISOString(), // RTDB prefers ISO strings
+      user_id: userId,
+      app_id: appId
     };
 
     try {
-      // We save the data in the same collection path as the original app
-      const collectionPath = `/artifacts/${appId}/users/${userId}/TestResults`;
-      const docRef = await addDoc(collection(db, collectionPath), testResultData);
-      console.log("Result saved to Firestore with ID: ", docRef.id);
+      // --- This is the new Realtime Database save logic ---
+      // 1. Define the path (same as before, but as a string path)
+      const dbPath = `/artifacts/${appId}/users/${userId}/TestResults`;
+      
+      // 2. Get a reference to that path in the database
+      const dbRef = ref(db, dbPath);
+      
+      // 3. 'push' creates a new entry with a unique ID, just like 'addDoc'
+      const newResultRef = await push(dbRef, testResultData);
+      
+      console.log("Result saved to Realtime Database with key: ", newResultRef.key);
     } catch (error) {
-      console.error("Error saving result to Firestore:", error);
+      console.error("Error saving result to Realtime Database:", error);
     }
     
     setSaving(false);
-    // Screen transition is handled by goToNextQuestion
   };
+  // --- END OF CHANGE ---
 
-  // --- NEW: Helper to advance quiz, replacing old 'handleNext' ---
+  // --- Quiz logic functions (UNCHANGED) ---
   const goToNextQuestion = (newScore, newGender) => {
-    // 1. Save current state to history for the back button
     setHistory(h => [...h, {
       questionIndex: currentQuestionIndex,
       score: score,
       userGender: userGender
     }]);
-
-    // 2. Check if we are at the end
     const questions = getFilteredQuestions();
     if (currentQuestionIndex + 1 >= questions.length) {
       setScreen("result");
-      saveResult(newScore); // Save the final score to Firebase
+      saveResult(newScore); 
     } else {
-      // 3. Advance to the next question
       setCurrentQuestionIndex(i => i + 1);
-      // Clear inputs for the next question
       setHeight("");
       setWeight("");
       setWaist("");
@@ -453,28 +427,21 @@ export default function App() {
       setActiveOption(null);
     }
   };
-
   const handleOptionClick = (option) => {
-    setActiveOption(option.text); // For visual feedback
-
+    setActiveOption(option.text);
     const newScore = score + option.points;
     const newGender = option.gender || userGender;
-    
     setScore(newScore);
     if (option.gender) {
       setUserGender(option.gender);
     }
-    
-    // Use a timeout to show the active state before moving on
     setTimeout(() => {
       goToNextQuestion(newScore, newGender);
     }, 300);
   };
-  
   const handleMeasurementSubmit = () => {
     const question = getFilteredQuestions()[currentQuestionIndex];
     let pointsAdded = 0;
-
     if (question.type === 'bmi') {
       const h = parseFloat(height);
       const w = parseFloat(weight);
@@ -485,7 +452,6 @@ export default function App() {
       const bmi = w / ((h / 100) ** 2);
       if (bmi >= 30) pointsAdded = 3;
       else if (bmi >= 25) pointsAdded = 1;
-      
     } else if (question.type === 'waist') {
       const wc = parseFloat(waist);
       if (isNaN(wc) || wc < 50 || wc > 250) {
@@ -495,35 +461,28 @@ export default function App() {
       if (userGender === 'male' && wc >= 102) pointsAdded = 2;
       else if (userGender === 'female' && wc >= 88) pointsAdded = 2;
     }
-    
     setMeasurementError(null);
     const newScore = score + pointsAdded;
     setScore(newScore);
     goToNextQuestion(newScore, userGender);
   };
-
   const toggleLanguage = () => {
     setLanguage(l => l === 'ar' ? 'en' : 'ar');
-    resetApp(); // Reset app on lang change
+    resetApp();
   };
   
-  // --- Helper variables for rendering ---
+  // --- Helper variables (UNCHANGED) ---
   const questions = getFilteredQuestions();
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = (currentQuestionIndex / questions.length) * 100;
-  
+  const progress = (questions.length > 0) ? (currentQuestionIndex / questions.length) * 100 : 0;
   const riskThreshold = quizType === 'cdc' ? 5 : 6;
   const isHighRisk = score >= riskThreshold;
 
-  // --- NEW: JSX based on HTML/JS design ---
+  // --- JSX / HTML Rendering (UNCHANGED) ---
   return (
-    // New background from HTML
     <div className="flex items-center justify-center min-h-screen p-4" style={{ background: 'linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%)', fontFamily: "'Tajawal', sans-serif" }}>
-      
-      {/* New App container from HTML */}
       <div id="app-container" className="w-full max-w-md mx-auto bg-white shadow-xl shadow-cyan-100/50 rounded-3xl p-6 md:p-8 space-y-6 transition-all duration-500 border border-gray-100" dir={isRTL ? "rtl" : "ltr"}>
         
-        {/* Header from HTML */}
         <header className="flex justify-between items-center pb-4 border-b border-gray-100">
           <div className="w-1/4 text-left">
             <AnimatePresence>
@@ -569,10 +528,8 @@ export default function App() {
           </div>
         </header>
 
-        {/* --- Screen Content --- */}
         <AnimatePresence mode="wait">
           
-          {/* Menu Screen */}
           {screen === "menu" && (
             <motion.div
               key="menu"
@@ -612,7 +569,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* Quiz Screen */}
           {screen === "quiz" && currentQuestion && (
             <motion.div
               key="quiz"
@@ -710,7 +666,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* Result Screen */}
           {screen === "result" && (
             <motion.div
               key="result"
@@ -777,7 +732,6 @@ export default function App() {
 
         </AnimatePresence>
         
-        {/* Footer from HTML */}
         <footer className="text-center text-xs text-gray-500 pt-6 border-t border-gray-100 mt-6">
           <AnimatePresence>
             {screen === "menu" && (
@@ -804,4 +758,3 @@ export default function App() {
     </div>
   );
 }
-// --- END: Main App Component ---
